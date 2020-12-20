@@ -25,9 +25,12 @@ async function menu() {
                 'View all employees by department',
                 'View all employees by manager',
                 'Add employee',
+                'Add department',
+                'Add role',
                 'Remove employee',
                 'Update employee role',
-                'Update employee manager'
+                'Update employee manager',
+                'Exit'
             ]
         }
     ])
@@ -44,6 +47,12 @@ async function menu() {
         case 'Add employee':
             addEmployee();
             break;
+        case 'Add department':
+            addDepartment();
+            break;
+        case 'Add role':
+            addRole();
+            break;
         case 'Remove employee':
             removeEmployee();
             break;
@@ -52,6 +61,9 @@ async function menu() {
             break;
         case 'Update employee manager':
             updateManager();
+            break;
+        case 'Exit':
+            console.log("--Closing application--");
             break;
         default:
             return;
@@ -208,6 +220,28 @@ async function addEmployee() {
                 menu();
             });
         });
+    });
+}
+
+async function addDepartment() {
+    let newDepartment = {};
+    let answer;
+    do {
+        answer = await inquirer.prompt([
+            {
+                type: "input",
+                message: "What is the new department? ",
+                name: "department"
+            }
+        ]);
+        if (answer.department === "") {
+            console.log("Department Name cannot be left blank...");
+        }
+    } while (answer.department === "");
+    newDepartment.department_name = answer.department;
+    connection.query("INSERT INTO departments SET ?", newDepartment, (err, res) => {
+        if (err) throw err;
+        menu();
     });
 }
 
