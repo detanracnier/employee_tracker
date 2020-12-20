@@ -71,6 +71,7 @@ function viewAll(filter) {
     query += "ON employees.role_id=roles.id ";
     query += "INNER JOIN departments ";
     query += "ON roles.department_id=departments.id ";
+    query += "ORDER BY department_name ";
     if (filter) {
         query += " WHERE " + filter[0] + "=\"" + filter[1] + "\"";
     }
@@ -137,39 +138,41 @@ function viewAllByManager() {
 }
 
 async function addEmployee() {
-    let newEmployee;
+    let newEmployee = {};
+    let answer;
     do {
-        newEmployee = await inquirer.prompt([
+        answer = await inquirer.prompt([
             {
                 type: "input",
                 message: "What is the employees first name? ",
                 name: "first_name"
             }
         ]);
-        if (newEmployee.first_name === "") {
+        if (answer.first_name === "") {
             console.log("Employee Name cannot be left blank...");
         }
-    } while (newEmployee.first_name === "");
-
+    } while (answer.first_name === "");
+    newEmployee.first_name = answer.first_name;
     do {
-        newEmployee = await inquirer.prompt([
+        answer = await inquirer.prompt([
             {
                 type: "input",
                 message: "What is the employees last name? ",
                 name: "last_name"
             }
         ]);
-        if (newEmployee.last_name === "") {
+        if (answer.last_name === "") {
             console.log("Employee Name cannot be left blank...");
         }
 
-    } while (newEmployee.last_name === "");
+    } while (answer.last_name === "");
+    newEmployee.last_name = answer.last_name;
     let query = "SELECT DISTINCT title, id FROM roles";
     connection.query(query, async (err, res) => {
         if (err) throw err;
         let choices = [];
         res.forEach(role => choices.push(role.title));
-        newEmployee = await inquirer.prompt([
+        answer = await inquirer.prompt([
             {
                 type: "list",
                 message: "What is the employees role? ",
@@ -178,32 +181,56 @@ async function addEmployee() {
             }
         ]);
         res.forEach(role => {
-            if (role.title === newEmployee.role) { newEmployee.role_id = role.id };
+            if (role.title === answer.role) { newEmployee.role_id = role.id };
         });
-        delete newEmployee.role;
-        let query = "SELECT DISTINCT department_name, id FROM departments";
+        let query = "SELECT * FROM employees WHERE manager_id IS NULL";
         connection.query(query, async (err, res) => {
             if (err) throw err;
-            let choices = [];
-            res.forEach(dept => choices.push(depy.department_name));
-            newEmployee = await inquirer.prompt([
+            let choices = ["ADD AS MANAGER"];
+            res.forEach(manager => choices.push(manager.first_name + " " + manager.last_name));
+            answer = await inquirer.prompt([
                 {
                     type: "list",
-                    message: "What is the employees department? ",
-                    name: "department",
+                    message: "Who is the employees manager? ",
+                    name: "manager",
                     choices: choices
                 }
             ]);
-            res.forEach(dept => {
-                if (dept.department_name === newEmployee.department) { newEmployee.department_id = dept.id };
+            res.forEach(manager => {
+                if (manager.first_name + " " + manager.last_name === answer.manager) { newEmployee.manager_id = manager.id };
             });
-            delete newEmployee.department;
+            //if(answer.manager==="ADD AS MANAGER"){ newEmployee.manager_id = "NULL"};
             connection.query("INSERT INTO employees SET ?", newEmployee, (err, res) => {
                 if (err) throw err;
                 menu();
             });
         });
     });
+}
 
-    console.log(newEmployee);
+function removeEmployee() {
+    let query = "SELECT first_name, last_name, id FROM employees";
+    connection.query(query, async (err, res) => {
+        if (err) throw err;
+        let choices = [];
+        res.forEach(person => { choices.push(person.first_name + " " + person.last_name) });
+        let answer = await inquirer.prompt([
+            {
+                type: "list",
+                message: "Which employee would you like to destroy? ",
+                name: "name",
+                choices: choices
+            }
+        ]);
+        let remove_id;
+        res.forEach(person => {
+            if (person.first_name + " " + person.last_name === answer.name) {
+                remove_id = person.id;
+            }
+        });
+        connection.query("DELETE FROM employees WHERE id = ?", remove_id,(err, res) => {
+            if(err) throw err;
+            menu();
+        });
+    })
 }
