@@ -68,6 +68,7 @@ async function menu() {
         default:
             return;
     }
+
 }
 
 function viewAll(filter) {
@@ -83,13 +84,14 @@ function viewAll(filter) {
     query += "INNER JOIN roles ";
     query += "ON employees.role_id=roles.id ";
     query += "INNER JOIN departments ";
-    query += "ON roles.department_id=departments.id ";
-    query += "INNER JOIN employees AS managers ";
+    query += "ON roles.department_id = departments.id ";
+    query += "LEFT JOIN employees AS managers ";
     query += "ON employees.manager_id = managers.id "
     if (filter) {
         query += " WHERE " + filter[0] + "=" + filter[1];
     }
     query += " ORDER BY department_name ";
+    console.log(query);
     connection.query(query, (err, res) => {
         if (err) throw err;
         console.table(res);
@@ -243,6 +245,61 @@ async function addDepartment() {
         if (err) throw err;
         menu();
     });
+}
+
+async function addRole() {
+    let newRole = {};
+    let answer;
+    do {
+        answer = await inquirer.prompt([
+            {
+                type: "input",
+                message: "What is the new role? ",
+                name: "title"
+            }
+        ]);
+        if (answer.title === "") {
+            console.log("Role Name cannot be left blank...");
+        }
+    } while (answer.title === "");
+    newRole.title = answer.title;
+    do {
+        answer = await inquirer.prompt([
+            {
+                type: "input",
+                message: "What is the new role salary? ",
+                name: "salary"
+            }
+        ]);
+        if (answer.salary === "") {
+            console.log("Salary cannot be left blank...");
+        } else if (isNaN(parseInt(answer.salary))) {
+            console.log("You must enter a number...");
+        }
+    } while (answer.title === "" || isNaN(answer.salary));
+    newRole.salary = answer.salary;
+    connection.query("SELECT * FROM departments", async (err, res) => {
+        if (err) throw err;
+        let choices = [];
+        res.forEach(dept => choices.push(dept.department_name));
+        let answer = await inquirer.prompt([
+            {
+                type: "list",
+                message: "What is the new roles department? ",
+                name: "department",
+                choices: choices
+            }
+        ]);
+        res.forEach(dept => {
+            if (dept.department_name === answer.department) {
+                newRole.department_id = dept.id;
+            }
+        });
+        connection.query("INSERT INTO roles SET ?", newRole, (err, res) => {
+            if (err) throw err;
+            menu();
+        });
+    })
 }
 
 function removeEmployee() {
