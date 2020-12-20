@@ -228,9 +228,57 @@ function removeEmployee() {
                 remove_id = person.id;
             }
         });
-        connection.query("DELETE FROM employees WHERE id = ?", remove_id,(err, res) => {
-            if(err) throw err;
+        connection.query("DELETE FROM employees WHERE id = ?", remove_id, (err, res) => {
+            if (err) throw err;
             menu();
+        });
+    })
+}
+
+function updateRole() {
+    let query = "SELECT first_name, last_name, id FROM employees";
+    connection.query(query, async (err, res) => {
+        if (err) throw err;
+        let choices = [];
+        res.forEach(person => { choices.push(person.first_name + " " + person.last_name) });
+        let answer = await inquirer.prompt([
+            {
+                type: "list",
+                message: "Whose role would you like to change? ",
+                name: "name",
+                choices: choices
+            }
+        ]);
+        let employee_id;
+        res.forEach(person => {
+            if (person.first_name + " " + person.last_name === answer.name) {
+                employee_id = person.id;
+            }
+        });
+        query = "SELECT * FROM roles";
+        connection.query(query, async (err, res) => {
+            if (err) throw err;
+            let choices = [];
+            res.forEach(role => { choices.push(role.title) });
+            let answer = await inquirer.prompt([
+                {
+                    type: "list",
+                    message: "What role should they have? ",
+                    name: "title",
+                    choices: choices
+                }
+            ]);
+            let role_id;
+            res.forEach(role => {
+                if (role.title === answer.title) {
+                    role_id = role.id;
+                }
+            });
+            let queryParams = [role_id,employee_id];
+            connection.query("UPDATE employees SET role_id = ? WHERE id = ?",queryParams, (err, res) => {
+                if(err) throw err;
+                menu();
+            })
         });
     })
 }
