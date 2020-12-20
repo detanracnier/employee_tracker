@@ -65,16 +65,19 @@ function viewAll(filter) {
     query += "employees.last_name, ";
     query += "roles.title, ";
     query += "departments.department_name, ";
-    query += "roles.salary ";
+    query += "roles.salary, ";
+    query += "CONCAT(managers.first_name,\" \",managers.last_name) AS manager ";
     query += "FROM employees ";
     query += "INNER JOIN roles ";
     query += "ON employees.role_id=roles.id ";
     query += "INNER JOIN departments ";
     query += "ON roles.department_id=departments.id ";
-    query += "ORDER BY department_name ";
+    query += "INNER JOIN employees AS managers ";
+    query += "ON employees.manager_id = managers.id "
     if (filter) {
-        query += " WHERE " + filter[0] + "=\"" + filter[1] + "\"";
+        query += " WHERE " + filter[0] + "=" + filter[1];
     }
+    query += " ORDER BY department_name ";
     connection.query(query, (err, res) => {
         if (err) throw err;
         console.table(res);
@@ -97,7 +100,8 @@ function viewAllByDept() {
                 choices: list
             }
         ]);
-        let filter = ["departments.department_name", menu.choice];
+
+        let filter = ["departments.department_name", "\"" + menu.choice + "\""];
         viewAll(filter);
     });
 }
@@ -112,7 +116,6 @@ function viewAllByManager() {
     query += "INNER JOIN roles ";
     query += "ON employees.role_id=roles.id ";
     query += "WHERE employees.manager_id IS NULL";
-    console.log(query);
     connection.query(query, async (err, res) => {
         if (err) throw err;
         let list = [];
@@ -274,9 +277,57 @@ function updateRole() {
                     role_id = role.id;
                 }
             });
-            let queryParams = [role_id,employee_id];
-            connection.query("UPDATE employees SET role_id = ? WHERE id = ?",queryParams, (err, res) => {
-                if(err) throw err;
+            let queryParams = [role_id, employee_id];
+            connection.query("UPDATE employees SET role_id = ? WHERE id = ?", queryParams, (err, res) => {
+                if (err) throw err;
+                menu();
+            })
+        });
+    })
+}
+
+function updateManager() {
+    let query = "SELECT * FROM employees WHERE manager_id IS NOT NULL";
+    connection.query(query, async (err, res) => {
+        if (err) throw err;
+        let choices = [];
+        res.forEach(person => { choices.push(person.first_name + " " + person.last_name) });
+        let answer = await inquirer.prompt([
+            {
+                type: "list",
+                message: "Whose manager would you like to change? ",
+                name: "name",
+                choices: choices
+            }
+        ]);
+        let employee_id;
+        res.forEach(person => {
+            if (person.first_name + " " + person.last_name === answer.name) {
+                employee_id = person.id;
+            }
+        });
+        query = "SELECT * FROM employees WHERE manager_id IS NULL";
+        connection.query(query, async (err, res) => {
+            if (err) throw err;
+            let choices = [];
+            res.forEach(manager => { choices.push(manager.first_name + " " + manager.last_name) });
+            let answer = await inquirer.prompt([
+                {
+                    type: "list",
+                    message: "Who should their manager be? ",
+                    name: "manager",
+                    choices: choices
+                }
+            ]);
+            let manager_id;
+            res.forEach(manager => {
+                if (manager.first_name + " " + manager.last_name === answer.manager) {
+                    manager_id = manager.id;
+                }
+            });
+            let queryParams = [manager_id, employee_id];
+            connection.query("UPDATE employees SET manager_id = ? WHERE id = ?", queryParams, (err, res) => {
+                if (err) throw err;
                 menu();
             })
         });
